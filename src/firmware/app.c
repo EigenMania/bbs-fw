@@ -81,6 +81,8 @@ void apply_thermal_limit(uint8_t* target_current);
 void apply_low_voltage_limit(uint8_t* target_current);
 void apply_shift_sensor_interrupt(uint8_t* target_current);
 
+void compute_target_speed(uint8_t* target_speed);
+
 void reload_assist_params();
 
 uint16_t convert_wheel_speed_kph_to_rpm(uint8_t speed_kph);
@@ -118,6 +120,7 @@ void app_init()
 void app_process()
 {
 	uint8_t target_current = 0;
+	uint8_t target_speed = 0;
 	bool throttle_override = false;
 
 	if (assist_level == ASSIST_PUSH && g_config.use_push_walk)
@@ -157,16 +160,20 @@ void app_process()
 	apply_shift_sensor_interrupt(&target_current);
 #endif
 
+	target_speed = (uint8_t)MAP16(pas_get_cadence_rpm_x10(), 0, MAX_CADENCE_RPM_X10, 0, 100);
+
 	// override target cadence if configured in assist level
 	if (throttle_override &&
 		(assist_level_data.level.flags & ASSIST_FLAG_PAS) &&
 		(assist_level_data.level.flags & ASSIST_FLAG_OVERRIDE_CADENCE))
 	{
-		motor_set_target_speed(THROTTLE_CADENCE_OVERRIDE_PERCENT);
+		//motor_set_target_speed(THROTTLE_CADENCE_OVERRIDE_PERCENT);
+		motor_set_target_speed(target_speed);
 	}
 	else
 	{
-		motor_set_target_speed(assist_level_data.level.max_cadence_percent);
+		motor_set_target_speed(target_speed);
+		//motor_set_target_speed(assist_level_data.level.max_cadence_percent);
 	}
 
 	motor_set_target_current(target_current);
