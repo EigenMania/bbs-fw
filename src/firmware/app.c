@@ -81,11 +81,11 @@ void apply_thermal_limit(uint8_t* target_current);
 void apply_low_voltage_limit(uint8_t* target_current);
 void apply_shift_sensor_interrupt(uint8_t* target_current);
 
-void compute_target_speed(uint8_t* target_speed);
-
 void reload_assist_params();
 
 uint16_t convert_wheel_speed_kph_to_rpm(uint8_t speed_kph);
+
+void compute_target_speed(uint8_t* target_speed);
 
 void app_init()
 {
@@ -696,8 +696,11 @@ void apply_low_voltage_limit(uint8_t* target_current)
 
 		if (eventlog_is_enabled() && system_ms() > next_log_volt_ms)
 		{
-			next_log_volt_ms = system_ms() + 10000;
-			eventlog_write_data(EVT_DATA_VOLTAGE, (uint16_t)voltage_x100);
+			next_log_volt_ms = system_ms() + 1000;
+			//eventlog_write_data(EVT_DATA_VOLTAGE, (uint16_t)voltage_x100);
+			//eventlog_write_data(EVT_DATA_PEDAL_CADENCE_RPM, (uint16_t)(pas_get_cadence_rpm_x10() / 10.0));
+			uint8_t pas_cadence_pct = (uint8_t) MAP16(pas_get_cadence_rpm_x10(), 0, MAX_CADENCE_RPM_X10, 0, 100);
+			eventlog_write_data(EVT_DATA_PEDAL_CADENCE_RPM, pas_cadence_pct);
 		}
 	}
 
@@ -823,4 +826,16 @@ uint16_t convert_wheel_speed_kph_to_rpm(uint8_t speed_kph)
 {
 	float radius_mm = EXPAND_U16(g_config.wheel_size_inch_x10_u16h, g_config.wheel_size_inch_x10_u16l) * 1.27f; // g_config.wheel_size_inch_x10 / 2.f * 2.54f;
 	return (uint16_t)(25000.f / (3 * 3.14159f * radius_mm) * speed_kph);
+}
+
+void compute_target_speed(uint8_t* target_speed)
+{
+	static uint32_t next_fetch_current_cadence_rpm_x10 = 100;
+
+	if (system_ms() > next_fetch_current_cadence_rpm_x10)
+	{
+		next_fetch_current_cadence_rpm_x10 = system_ms() + 100;
+		*target_speed = (uint8_t) MAP16(pas_get_cadence_rpm_x10(), 0, MAX_CADENCE_RPM_X10, 0, 100);
+	}
+
 }

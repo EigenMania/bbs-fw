@@ -65,6 +65,7 @@
 #define EVT_DATA_CALIBRATE_VOLTAGE			146
 #define EVT_DATA_TORQUE_ADC					147
 #define EVT_DATA_TORQUE_ADC_CALIBRATED		148
+#define EVT_DATA_PEDAL_CADENCE_RPM			149
 
 
 void eventlog_init(bool enabled);
