@@ -160,7 +160,13 @@ void app_process()
 	apply_shift_sensor_interrupt(&target_current);
 #endif
 
-	target_speed = (uint8_t)MAP16(pas_get_cadence_rpm_x10(), 0, MAX_CADENCE_RPM_X10, 0, 100);
+	static uint16_t current_cadence_rpm_x10 = 0;
+	static uint16_t filtered_cadence_rpm_x10 = 0;
+
+	current_cadence_rpm_x10 = pas_get_cadence_rpm_x10();
+	filtered_cadence_rpm_x10 = EXPONENTIAL_FILTER(filtered_cadence_rpm_x10, current_cadence_rpm_x10, 8);
+
+	target_speed = (uint8_t) MAP16(filtered_cadence_rpm_x10, 0, MAX_CADENCE_RPM_X10, 0, 100);
 
 	// override target cadence if configured in assist level
 	if (throttle_override &&
