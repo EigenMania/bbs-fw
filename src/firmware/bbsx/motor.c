@@ -638,7 +638,7 @@ static void process_com_state_machine()
 	case COM_STATE_SET_SPEED:
 		if (try_read_response(OPCODE_TARGET_SPEED, &data))
 		{
-			//eventlog_write_data(EVT_DATA_TARGET_SPEED, (uint8_t)((data * 100) / SPEED_STEPS));
+			eventlog_write_data(EVT_DATA_TARGET_SPEED, (uint8_t)((data * 100) / SPEED_STEPS));
 		}
 		else
 		{

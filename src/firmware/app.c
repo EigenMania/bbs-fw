@@ -127,7 +127,7 @@ void app_init()
 void app_process()
 {
 	uint8_t target_current = 0;
-	uint8_t target_speed = 0;
+	static uint8_t target_speed = 0;
 	bool throttle_override = false;
 
 	if (assist_level == ASSIST_PUSH && g_config.use_push_walk)
@@ -167,13 +167,13 @@ void app_process()
 	apply_shift_sensor_interrupt(&target_current);
 #endif
 
-	static uint16_t current_cadence_rpm_x10 = 0;
-	static uint16_t filtered_cadence_rpm_x10 = 0;
+	//static uint16_t current_cadence_rpm_x10 = 0;
+	//static uint16_t filtered_cadence_rpm_x10 = 0;
+	//current_cadence_rpm_x10 = pas_get_cadence_rpm_x10();
+	//filtered_cadence_rpm_x10 = EXPONENTIAL_FILTER(filtered_cadence_rpm_x10, current_cadence_rpm_x10, 8);
+	//target_speed = (uint8_t) MAP16(filtered_cadence_rpm_x10, 0, MAX_CADENCE_RPM_X10, 0, 100);
 
-	current_cadence_rpm_x10 = pas_get_cadence_rpm_x10();
-	filtered_cadence_rpm_x10 = EXPONENTIAL_FILTER(filtered_cadence_rpm_x10, current_cadence_rpm_x10, 8);
-
-	target_speed = (uint8_t) MAP16(filtered_cadence_rpm_x10, 0, MAX_CADENCE_RPM_X10, 0, 100);
+	compute_target_speed(&target_speed);
 
 	// override target cadence if configured in assist level
 	if (throttle_override &&
@@ -706,7 +706,7 @@ void apply_low_voltage_limit(uint8_t* target_current)
 			next_log_volt_ms = system_ms() + 1000;
 			//eventlog_write_data(EVT_DATA_VOLTAGE, (uint16_t)voltage_x100);
 			//eventlog_write_data(EVT_DATA_PEDAL_CADENCE_RPM, (uint16_t)(pas_get_cadence_rpm_x10() / 10.0));
-			uint8_t pas_cadence_pct = (uint8_t) MAP16(pas_get_cadence_rpm_x10(), 0, MAX_CADENCE_RPM_X10, 0, 100);
+			uint8_t pas_cadence_pct = (uint8_t) MAP16(pas_get_cadence_rpm_x10(), 0, (uint16_t)MAX_CADENCE_RPM_X10, 0, 100);
 			eventlog_write_data(EVT_DATA_PEDAL_CADENCE_RPM, pas_cadence_pct);
 		}
 	}
@@ -834,12 +834,12 @@ uint16_t convert_wheel_speed_kph_to_rpm(uint8_t speed_kph)
 
 void compute_target_speed(uint8_t* target_speed)
 {
-	static uint32_t next_fetch_current_cadence_rpm_x10 = 100;
+	static uint32_t next_fetch_current_cadence_rpm_x10 = 0;
 
 	if (system_ms() > next_fetch_current_cadence_rpm_x10)
 	{
-		next_fetch_current_cadence_rpm_x10 = system_ms() + 100;
-		*target_speed = (uint8_t) MAP16(pas_get_cadence_rpm_x10(), 0, MAX_CADENCE_RPM_X10, 0, 100);
+		next_fetch_current_cadence_rpm_x10 = system_ms() + 500;
+		*target_speed = (uint8_t) MAP16(pas_get_cadence_rpm_x10(), 0, (uint16_t) MAX_CADENCE_RPM_X10, 0, 100);
 	}
 
 }
