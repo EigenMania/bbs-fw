@@ -87,7 +87,7 @@ void reload_assist_params();
 
 uint16_t convert_wheel_speed_kph_to_rpm(uint8_t speed_kph);
 
-void compute_target_speed(uint8_t* target_speed);
+uint8_t compute_PAS_target_speed_pct();
 
 void app_init()
 {
@@ -127,8 +127,9 @@ void app_init()
 void app_process()
 {
 	uint8_t target_current = 0;
-	static uint8_t target_speed = 0;
+	uint8_t target_speed = 0;
 	bool throttle_override = false;
+	uint8_t throttle_percent = throttle_read();
 
 	if (assist_level == ASSIST_PUSH && g_config.use_push_walk)
 	{
@@ -136,8 +137,6 @@ void app_process()
 	}
 	else
 	{
-		uint8_t throttle_percent = throttle_read();
-
 		apply_pas_cadence(&target_current, throttle_percent);
 #if HAS_TORQUE_SENSOR
 		apply_pas_torque(&target_current);
@@ -167,26 +166,22 @@ void app_process()
 	apply_shift_sensor_interrupt(&target_current);
 #endif
 
-	//static uint16_t current_cadence_rpm_x10 = 0;
-	//static uint16_t filtered_cadence_rpm_x10 = 0;
-	//current_cadence_rpm_x10 = pas_get_cadence_rpm_x10();
-	//filtered_cadence_rpm_x10 = EXPONENTIAL_FILTER(filtered_cadence_rpm_x10, current_cadence_rpm_x10, 8);
-	//target_speed = (uint8_t) MAP16(filtered_cadence_rpm_x10, 0, MAX_CADENCE_RPM_X10, 0, 100);
-
-	compute_target_speed(&target_speed);
+	uint8_t pas_target_speed_pct = compute_PAS_target_speed_pct(); // Always keep PAS target speed updated based on cadence.
 
 	// override target cadence if configured in assist level
 	if (throttle_override &&
 		(assist_level_data.level.flags & ASSIST_FLAG_PAS) &&
 		(assist_level_data.level.flags & ASSIST_FLAG_OVERRIDE_CADENCE))
 	{
-		//motor_set_target_speed(THROTTLE_CADENCE_OVERRIDE_PERCENT);
-		motor_set_target_speed(target_speed);
+		motor_set_target_speed(THROTTLE_CADENCE_OVERRIDE_PERCENT);
 	}
-	else
+	else if (throttle_percent > 0) // Throttle is active, use configured max cadence
 	{
-		motor_set_target_speed(target_speed);
-		//motor_set_target_speed(assist_level_data.level.max_cadence_percent);
+		motor_set_target_speed(assist_level_data.level.max_cadence_percent);
+	}
+	else // We are only pedalling, so use PAS target speed
+	{
+		motor_set_target_speed(pas_target_speed_pct);
 	}
 
 	motor_set_target_current(target_current);
@@ -703,11 +698,12 @@ void apply_low_voltage_limit(uint8_t* target_current)
 
 		if (eventlog_is_enabled() && system_ms() > next_log_volt_ms)
 		{
-			next_log_volt_ms = system_ms() + 1000;
-			//eventlog_write_data(EVT_DATA_VOLTAGE, (uint16_t)voltage_x100);
+			next_log_volt_ms = system_ms() + 10000;
+			eventlog_write_data(EVT_DATA_VOLTAGE, (uint16_t)voltage_reading_x100);
 			//eventlog_write_data(EVT_DATA_PEDAL_CADENCE_RPM, (uint16_t)(pas_get_cadence_rpm_x10() / 10.0));
-			uint8_t pas_cadence_pct = (uint8_t) MAP16(pas_get_cadence_rpm_x10(), 0, (uint16_t)MAX_CADENCE_RPM_X10, 0, 100);
-			eventlog_write_data(EVT_DATA_PEDAL_CADENCE_RPM, pas_cadence_pct);
+			//uint8_t pas_cadence_pct = (uint8_t)MAP32(pas_get_cadence_rpm_x10(), 0, MAX_CADENCE_RPM_X10, 0, 100);
+			//eventlog_write_data(EVT_DATA_PEDAL_CADENCE_RPM, pas_get_cadence_rpm_x10());
+			//eventlog_write_data(EVT_DATA_PEDAL_CADENCE_RPM, pas_cadence_pct);
 		}
 	}
 
@@ -832,14 +828,18 @@ uint16_t convert_wheel_speed_kph_to_rpm(uint8_t speed_kph)
 	return (uint16_t)(25000.f / (3 * 3.14159f * radius_mm) * speed_kph);
 }
 
-void compute_target_speed(uint8_t* target_speed)
+uint8_t compute_PAS_target_speed_pct()
 {
 	static uint32_t next_fetch_current_cadence_rpm_x10 = 0;
+	static uint8_t filtered_PAS_target_speed_pct = 0;
+	uint8_t current_PAS_target_speed_pct = 0;
 
 	if (system_ms() > next_fetch_current_cadence_rpm_x10)
 	{
-		next_fetch_current_cadence_rpm_x10 = system_ms() + 500;
-		*target_speed = (uint8_t) MAP16(pas_get_cadence_rpm_x10(), 0, (uint16_t) MAX_CADENCE_RPM_X10, 0, 100);
+		next_fetch_current_cadence_rpm_x10 = system_ms() + 100;
+		current_PAS_target_speed_pct = (uint8_t) MAP32(pas_get_cadence_rpm_x10(), 0, MAX_CADENCE_RPM_X10, 0, 100);
+		filtered_PAS_target_speed_pct = EXPONENTIAL_FILTER(filtered_PAS_target_speed_pct, current_PAS_target_speed_pct, 4);
 	}
 
+	return filtered_PAS_target_speed_pct;
 }
