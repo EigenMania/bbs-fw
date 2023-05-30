@@ -151,7 +151,13 @@ static const uint8_t sin_table[SIN_TABLE_LEN] =
 
 // motor control state (shared with isr)
 // ------------------------------------------------------
-static volatile bool is_disabled = false;
+#define CONTROL_STATE_DISABLE			0
+#define CONTROL_STATE_PREPARE			1
+#define CONTROL_STATE_START				2
+#define CONTROL_STATE_RUNNING			3
+
+
+static volatile uint8_t control_state = CONTROL_STATE_DISABLE;
 static volatile bool is_lvc_triggered = false;
 static volatile bool hall_sensor_error = false;
 
@@ -172,6 +178,7 @@ static volatile uint8_t pwm_duty_cycle_target = 0;
 static uint16_t adc_low_voltage_limit = 0;
 static uint8_t adc_battery_max_current = 0;
 static uint8_t adc_phase_max_current = 0;
+
 // ------------------------------------------------------
 
 // foc angle filter
@@ -402,30 +409,15 @@ void motor_process()
 
 void motor_enable()
 {
-	is_disabled = false;
-
-	// OC1
-	TIM1->CCER1 |= (uint8_t)(TIM1_CCER1_CC1E | TIM1_CCER1_CC1NE);
-
-	// OC2
-	TIM1->CCER1 |= (uint8_t)(TIM1_CCER1_CC2E | TIM1_CCER1_CC2NE);
-
-	// OC3
-	TIM1->CCER2 |= (uint8_t)(TIM1_CCER2_CC3E | TIM1_CCER2_CC3NE);
+	if (control_state == CONTROL_STATE_DISABLE)
+	{
+		control_state = CONTROL_STATE_PREPARE;
+	}
 }
 
 void motor_disable()
 {
-	is_disabled = true;
-
-	// OC1
-	TIM1->CCER1 &= ~(uint8_t)(TIM1_CCER1_CC1E | TIM1_CCER1_CC1NE);
-	
-	// OC2
-	TIM1->CCER1 &= ~(uint8_t)(TIM1_CCER1_CC2E | TIM1_CCER1_CC2NE);
-	
-	// OC3
-	TIM1->CCER2 &= ~(uint8_t)(TIM1_CCER2_CC3E | TIM1_CCER2_CC3NE);
+	control_state = CONTROL_STATE_DISABLE;
 }
 
 uint16_t motor_status()
@@ -537,8 +529,6 @@ uint16_t motor_get_battery_voltage_x10()
 }
 
 
-
-
 // state variables only used by isr
 // ---------------------------------------------
 static uint8_t hall_sensors_state_last = 0;
@@ -558,7 +548,6 @@ static uint8_t current_controller_counter = 0;
 static uint16_t speed_controller_counter = 0;
 
 static uint8_t adc_battery_ramp_max_current = 0;
-
 
 // Measures did with a 24V Q85 328 RPM motor, rotating motor backwards by hand:
 // Hall sensor A positive to negative transition | BEMF phase B at max value / top of sinewave
@@ -583,6 +572,36 @@ void isr_timer1_cmp(void) __interrupt(ITC_IRQ_TIM1_CAPCOM)
 
 	// atomic write (uint8), current is not expected to exceed adc 255 (40A)
 	adc_battery_current = ADC_10BIT_BATTERY_CURRENT;
+
+	switch (control_state)
+	{
+	case CONTROL_STATE_DISABLE:
+		// disable outputs
+		TIM1->CCER1 &= ~(uint8_t)(TIM1_CCER1_CC1E | TIM1_CCER1_CC1NE);	// OC1
+		TIM1->CCER1 &= ~(uint8_t)(TIM1_CCER1_CC2E | TIM1_CCER1_CC2NE);	// OC2
+		TIM1->CCER2 &= ~(uint8_t)(TIM1_CCER2_CC3E | TIM1_CCER2_CC3NE);	// OC3
+		break;
+	case CONTROL_STATE_PREPARE:
+		if (speed_erps > 0)
+		{
+			// Restart from duty cycle mapped from erps.
+			// This is probably not the correct way to do this, but
+			// it seems to work reasonably well. VESC tracks back-emf
+			// to calculate duty cyle to restart from...
+			pwm_duty_cycle = (uint8_t)MAP32(speed_erps, 0, MAX_MOTOR_SPEED_ERPS, PWM_DUTY_CYCLE_MIN, PWM_DUTY_CYCLE_MAX);
+		}	
+		control_state = CONTROL_STATE_START;
+		break;
+	case CONTROL_STATE_START:
+		// enable outputs
+		TIM1->CCER1 |= (uint8_t)(TIM1_CCER1_CC1E | TIM1_CCER1_CC1NE); 	// OC1
+		TIM1->CCER1 |= (uint8_t)(TIM1_CCER1_CC2E | TIM1_CCER1_CC2NE);	// OC2
+		TIM1->CCER2 |= (uint8_t)(TIM1_CCER2_CC3E | TIM1_CCER2_CC3NE);	// OC3
+		control_state = CONTROL_STATE_RUNNING;
+		break;
+	default:
+		break;
+	}
 
 	// calculate motor current adc value
 	if (pwm_duty_cycle > 0)
@@ -738,7 +757,7 @@ void isr_timer1_cmp(void) __interrupt(ITC_IRQ_TIM1_CAPCOM)
 	++speed_controller_counter;
 
 	if	(
-			is_disabled ||
+			control_state == CONTROL_STATE_DISABLE ||
 			is_lvc_triggered ||
 			(pwm_duty_cycle_target == 0) ||
 			(GET_PIN_INPUT_STATE(PIN_BRAKE) == 0) //active low
@@ -854,7 +873,6 @@ void isr_timer1_cmp(void) __interrupt(ITC_IRQ_TIM1_CAPCOM)
 
 
 	// set final duty cycle value to pwm timers
-
 	// phase B
 	TIM1->CCR3H = phase_b_voltage_msb;
 	TIM1->CCR3L = phase_b_voltage_lsb;
@@ -864,7 +882,7 @@ void isr_timer1_cmp(void) __interrupt(ITC_IRQ_TIM1_CAPCOM)
 	// phase A
 	TIM1->CCR1H = phase_a_voltage_msb;
 	TIM1->CCR1L = phase_a_voltage_lsb;
-
+	
 
 	// ramp up motor current
 	if (adc_battery_target_current > adc_battery_ramp_max_current)
