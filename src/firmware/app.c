@@ -700,10 +700,6 @@ void apply_low_voltage_limit(uint8_t* target_current)
 		{
 			next_log_volt_ms = system_ms() + 10000;
 			eventlog_write_data(EVT_DATA_VOLTAGE, (uint16_t)voltage_reading_x100);
-			//eventlog_write_data(EVT_DATA_PEDAL_CADENCE_RPM, (uint16_t)(pas_get_cadence_rpm_x10() / 10.0));
-			//uint8_t pas_cadence_pct = (uint8_t)MAP32(pas_get_cadence_rpm_x10(), 0, MAX_CADENCE_RPM_X10, 0, 100);
-			//eventlog_write_data(EVT_DATA_PEDAL_CADENCE_RPM, pas_get_cadence_rpm_x10());
-			//eventlog_write_data(EVT_DATA_PEDAL_CADENCE_RPM, pas_cadence_pct);
 		}
 	}
 
