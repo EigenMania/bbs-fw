@@ -93,6 +93,7 @@ void reload_assist_params();
 uint16_t convert_wheel_speed_kph_to_rpm(uint8_t speed_kph);
 
 uint8_t compute_PAS_target_speed_pct();
+//uint8_t compute_PAS_target_speed_pct_V2();
 
 void app_init()
 {
@@ -888,3 +889,37 @@ uint8_t compute_PAS_target_speed_pct()
 
 	return filtered_PAS_target_speed_pct;
 }
+
+/*
+uint8_t compute_PAS_target_speed_pct_V2()
+{
+	static uint32_t next_fetch_current_cadence_rpm_x10 = 0;
+	static uint8_t filtered_PAS_target_speed_pct = 0;
+	uint8_t current_PAS_target_speed_pct = 0;
+
+	static uint16_t current_raw_pas_cadence_x10 = 0;
+
+	uint16_t c_max = 1400;
+	uint16_t c_start = 200;
+	uint8_t delta = 5;
+	uint32_t num = 100 * c_max * c_start;
+	uint32_t den = 100 * c_start + delta * c_max;
+	//uint32_t c_star = num / den;
+
+	if (system_ms() > next_fetch_current_cadence_rpm_x10)
+	{
+		next_fetch_current_cadence_rpm_x10 = system_ms() + 100;
+		current_raw_pas_cadence_x10 = pas_get_cadence_rpm_x10();
+		if (current_raw_pas_cadence_x10 < c_start)
+		{
+			current_PAS_target_speed_pct = (uint8_t)MAP32(current_raw_pas_cadence_x10, 0, 1037, 0, 100);
+		}
+		else
+		{
+			current_PAS_target_speed_pct = (uint8_t)MAP32(current_raw_pas_cadence_x10, 0, 1400, 0, 100) + 5;
+		}
+		filtered_PAS_target_speed_pct = EXPONENTIAL_FILTER(filtered_PAS_target_speed_pct, current_PAS_target_speed_pct, 4);
+	}
+	return filtered_PAS_target_speed_pct;
+}
+*/
