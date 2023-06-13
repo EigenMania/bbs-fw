@@ -93,7 +93,7 @@ void reload_assist_params();
 uint16_t convert_wheel_speed_kph_to_rpm(uint8_t speed_kph);
 
 uint8_t compute_PAS_target_speed_pct();
-//uint8_t compute_PAS_target_speed_pct_V2();
+uint8_t compute_PAS_target_speed_pct_V2();
 
 void app_init()
 {
@@ -177,7 +177,7 @@ void app_process()
 	apply_shift_sensor_interrupt(&target_current);
 #endif
 
-	uint8_t pas_target_speed_pct = compute_PAS_target_speed_pct(); // Always keep PAS target speed updated based on cadence.
+	uint8_t pas_target_speed_pct = compute_PAS_target_speed_pct_V2(); // Always keep PAS target speed updated based on cadence.
 
 	// override target cadence if configured in assist level
 	if (throttle_override &&
@@ -890,7 +890,6 @@ uint8_t compute_PAS_target_speed_pct()
 	return filtered_PAS_target_speed_pct;
 }
 
-/*
 uint8_t compute_PAS_target_speed_pct_V2()
 {
 	static uint32_t next_fetch_current_cadence_rpm_x10 = 0;
@@ -899,18 +898,12 @@ uint8_t compute_PAS_target_speed_pct_V2()
 
 	static uint16_t current_raw_pas_cadence_x10 = 0;
 
-	uint16_t c_max = 1400;
-	uint16_t c_start = 200;
-	uint8_t delta = 5;
-	uint32_t num = 100 * c_max * c_start;
-	uint32_t den = 100 * c_start + delta * c_max;
-	//uint32_t c_star = num / den;
-
 	if (system_ms() > next_fetch_current_cadence_rpm_x10)
 	{
 		next_fetch_current_cadence_rpm_x10 = system_ms() + 100;
 		current_raw_pas_cadence_x10 = pas_get_cadence_rpm_x10();
-		if (current_raw_pas_cadence_x10 < c_start)
+
+		if (current_raw_pas_cadence_x10 < 200)
 		{
 			current_PAS_target_speed_pct = (uint8_t)MAP32(current_raw_pas_cadence_x10, 0, 1037, 0, 100);
 		}
@@ -922,4 +915,3 @@ uint8_t compute_PAS_target_speed_pct_V2()
 	}
 	return filtered_PAS_target_speed_pct;
 }
-*/
