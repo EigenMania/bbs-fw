@@ -926,14 +926,17 @@ uint8_t compute_PAS_target_speed_pct_V2()
 		next_fetch_current_cadence_rpm_x10 = system_ms() + 100;
 		current_raw_pas_cadence_x10 = pas_get_cadence_rpm_x10();
 
-		if (current_raw_pas_cadence_x10 < 200)
+		if (current_raw_pas_cadence_x10 < 300)
 		{
-			current_PAS_target_speed_pct = (uint8_t)MAP32(current_raw_pas_cadence_x10, 0, 1037, 0, 100);
+			current_PAS_target_speed_pct = (uint8_t)MAP32(current_raw_pas_cadence_x10, 0, 1068, 0, 100);
 		}
 		else
 		{
-			current_PAS_target_speed_pct = (uint8_t)MAP32(current_raw_pas_cadence_x10, 0, 1400, 0, 100) + 5;
+			current_PAS_target_speed_pct = (uint8_t)MAP32(current_raw_pas_cadence_x10, 0, 1300, 0, 100) + 5;
 		}
+		// Clip between 10% (to help startup) and 100%
+		current_PAS_target_speed_pct = CLAMP(current_PAS_target_speed_pct, 10, 100);
+
 		filtered_PAS_target_speed_pct = EXPONENTIAL_FILTER(filtered_PAS_target_speed_pct, current_PAS_target_speed_pct, 4);
 	}
 	return filtered_PAS_target_speed_pct;
