@@ -84,6 +84,7 @@ void apply_speed_limit(uint8_t* target_current);
 void apply_thermal_limit(uint8_t* target_current);
 void apply_low_voltage_limit(uint8_t* target_current);
 void apply_shift_sensor_interrupt(uint8_t* target_current);
+void apply_brake(uint8_t* target_current);
 
 bool check_power_block();
 void block_power_for(uint16_t ms);
@@ -178,6 +179,7 @@ void app_process()
 #endif
 
 	uint8_t pas_target_speed_pct = compute_PAS_target_speed_pct_V2(); // Always keep PAS target speed updated based on cadence.
+	apply_brake(&target_current);
 
 	// override target cadence if configured in assist level
 	if (throttle_override &&
@@ -197,7 +199,7 @@ void app_process()
 
 	motor_set_target_current(target_current);
 
-	if (target_current > 0 && !brake_is_activated())
+	if (target_current > 0)
 	{
 		motor_enable();
 	}
@@ -831,6 +833,13 @@ void apply_shift_sensor_interrupt(uint8_t* target_current)
 }
 #endif
 
+void apply_brake(uint8_t* target_current)
+{
+	if (brake_is_activated())
+	{
+		*target_current = 0;
+	}
+}
 
 bool check_power_block()
 {
