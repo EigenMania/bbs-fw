@@ -157,15 +157,15 @@ void app_process()
 			(assist_level_data.level.flags & ASSIST_FLAG_PAS) &&
 			(assist_level_data.level.flags & ASSIST_FLAG_OVERRIDE_CADENCE))
 		{
-			motor_set_target_speed(THROTTLE_CADENCE_OVERRIDE_PERCENT);
+			target_cadence = THROTTLE_CADENCE_OVERRIDE_PERCENT;
 		}
 		else if (throttle_percent > 0) // Throttle is active, use configured max cadence
 		{
-			motor_set_target_speed(assist_level_data.level.max_cadence_percent);
+			target_cadence = assist_level_data.level.max_cadence_percent;
 		}
 		else // We are only pedalling, so use PAS target speed
 		{
-			motor_set_target_speed(pas_target_speed_pct);
+			target_cadence = pas_target_speed_pct;
 		}
 	}
 
