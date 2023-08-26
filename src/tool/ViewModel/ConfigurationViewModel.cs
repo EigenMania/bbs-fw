@@ -48,7 +48,6 @@ namespace BBSFW.ViewModel
 				new ValueItemViewModel<Configuration.AssistModeSelect>(Configuration.AssistModeSelect.Pas9AndLights, "PAS 9 + Lights Button"),
 			};
 
-
 		public static List<ValueItemViewModel<Configuration.WalkModeData>> WalkModeDataDisplayOptions { get; } =
 			new List<ValueItemViewModel<Configuration.WalkModeData>>
 			{
@@ -56,6 +55,23 @@ namespace BBSFW.ViewModel
 				new ValueItemViewModel<Configuration.WalkModeData>(Configuration.WalkModeData.Temperature, "Temperature (C)"),
 				new ValueItemViewModel<Configuration.WalkModeData>(Configuration.WalkModeData.RequestedPower, "Requested Power (%)"),
 				new ValueItemViewModel<Configuration.WalkModeData>(Configuration.WalkModeData.BatteryPercent, "Battery Level (%)")
+			};
+
+		public static List<ValueItemViewModel<Configuration.ThrottleGlobalSpeedLimitOptions>> ThrottleGlobalSpeedLimitOptions { get; } =
+			new List<ValueItemViewModel<Configuration.ThrottleGlobalSpeedLimitOptions>>
+			{
+				new ValueItemViewModel<Configuration.ThrottleGlobalSpeedLimitOptions>(Configuration.ThrottleGlobalSpeedLimitOptions.Disabled, "Disabled"),
+				new ValueItemViewModel<Configuration.ThrottleGlobalSpeedLimitOptions>(Configuration.ThrottleGlobalSpeedLimitOptions.Enabled, "Enabled"),
+				new ValueItemViewModel<Configuration.ThrottleGlobalSpeedLimitOptions>(Configuration.ThrottleGlobalSpeedLimitOptions.StandardLevels, "Standard Levels"),
+			};
+
+		public static List<ValueItemViewModel<Configuration.LightsModeOptions>> LightsModeOptions { get; } =
+			new List<ValueItemViewModel<Configuration.LightsModeOptions>>
+			{
+				new ValueItemViewModel<Configuration.LightsModeOptions>(Configuration.LightsModeOptions.Default, "Default"),
+				new ValueItemViewModel<Configuration.LightsModeOptions>(Configuration.LightsModeOptions.Disabled, "Disabled"),
+				new ValueItemViewModel<Configuration.LightsModeOptions>(Configuration.LightsModeOptions.AlwaysOn, "Always On"),
+				new ValueItemViewModel<Configuration.LightsModeOptions>(Configuration.LightsModeOptions.BrakeLight, "Brake Light"),
 			};
 
 
@@ -250,15 +266,18 @@ namespace BBSFW.ViewModel
 			}
 		}
 
-		public bool LightsAlwaysOn
+		public ValueItemViewModel<Configuration.LightsModeOptions> LightsMode
 		{
-			get { return _config.LightsAlwaysOn; }
+			get
+			{
+				return LightsModeOptions.FirstOrDefault((e) => e.Value == _config.LightsMode);
+			}
 			set
 			{
-				if (_config.LightsAlwaysOn != value)
+				if (_config.LightsMode != value.Value)
 				{
-					_config.LightsAlwaysOn = value;
-					OnPropertyChanged(nameof(LightsAlwaysOn));
+					_config.LightsMode = value.Value;
+					OnPropertyChanged(nameof(LightsMode));
 				}
 			}
 		}
@@ -301,6 +320,37 @@ namespace BBSFW.ViewModel
 				}
 			}
 		}
+
+		public ValueItemViewModel<Configuration.ThrottleGlobalSpeedLimitOptions> ThrottleGlobalSpeedLimit
+		{
+			get
+			{
+				return ThrottleGlobalSpeedLimitOptions.FirstOrDefault((e) => e.Value == _config.ThrottleGlobalSpeedLimit);
+			}
+			set
+			{
+				if (_config.ThrottleGlobalSpeedLimit != value.Value)
+				{
+					_config.ThrottleGlobalSpeedLimit = value.Value;
+					OnPropertyChanged(nameof(ThrottleGlobalSpeedLimit));
+				}
+			}
+		}
+
+		public uint ThrottleGlobalSpeedLimitPercent
+		{
+			get { return _config.ThrottleGlobalSpeedLimitPercent; }
+			set
+			{
+				if (_config.ThrottleGlobalSpeedLimitPercent != value)
+				{
+					_config.ThrottleGlobalSpeedLimitPercent = value;
+					OnPropertyChanged(nameof(ThrottleGlobalSpeedLimitPercent));
+				}
+			}
+		}
+
+
 
 		public uint PasStartDelayDegrees
 		{

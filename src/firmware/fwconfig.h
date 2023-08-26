@@ -51,7 +51,7 @@
 	#define MAX_CADENCE_RPM_X10					1500
 #elif defined(BBSHD)
 	// Measured on BBSHD at 48V
-	#define MAX_CADENCE_RPM_X10					1300 // 1680
+	#define MAX_CADENCE_RPM_X10					1200 // 1680
 #else
 	#define MAX_CADENCE_RPM_X10					1200
 #endif

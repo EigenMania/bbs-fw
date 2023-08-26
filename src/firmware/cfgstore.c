@@ -165,7 +165,7 @@ static void load_default_config()
 	g_config.use_push_walk = 1;
 	g_config.use_temperature_sensor = TEMPERATURE_SENSOR_CONTR | TEMPERATURE_SENSOR_MOTOR;
 
-	g_config.lights_always_on = 0;
+	g_config.lights_mode = LIGHTS_MODE_DEFAULT;
 
 	g_config.wheel_size_inch_x10_u16l = (uint8_t)280;
 	g_config.wheel_size_inch_x10_u16h = (uint8_t)(280 >> 8);
@@ -180,10 +180,11 @@ static void load_default_config()
 
 	g_config.throttle_start_voltage_mv_u16l = (uint8_t)900;
 	g_config.throttle_start_voltage_mv_u16h = (uint8_t)(900 >> 8);
-
 	g_config.throttle_end_voltage_mv_u16l = (uint8_t)3600;
 	g_config.throttle_end_voltage_mv_u16h = (uint8_t)(3600 >> 8);
 	g_config.throttle_start_percent = 1;
+	g_config.throttle_global_spd_lim_opt = THROTTLE_GLOBAL_SPEED_LIMIT_DISABLED;
+	g_config.throttle_global_spd_lim_percent = 100;
 
 	g_config.shift_interrupt_duration_ms_u16l = (uint8_t)600;
 	g_config.shift_interrupt_duration_ms_u16h = (uint8_t)(600 >> 8);
