@@ -18,16 +18,6 @@
 #include "util.h"
 #include "system.h"
 
-// Compile time options
-
-// Number of PAS sensor pulses to engage cruise mode,
-// there are 24 pulses per revolution.
-#define CRUISE_ENGAGE_PAS_PULSES				12
-
-// Number of PAS sensor pulses to disengage curise mode
-// by pedaling backwards. There are 24 pulses per revolution.
-#define CRUISE_DISENGAGE_PAS_PULSES				4
-
 
 typedef struct
 {
@@ -182,7 +172,7 @@ void app_process()
 	bool is_braking = apply_brake(&target_current);
 	
 	apply_current_ramp_up(&target_current, is_limiting || !throttle_override);
-	apply_current_ramp_down(&target_current, !is_braking);
+	apply_current_ramp_down(&target_current, !is_braking && !shift_limiting);
 
 	motor_set_target_speed(target_cadence);
 	motor_set_target_current(target_current);
