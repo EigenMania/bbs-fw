@@ -141,7 +141,10 @@ void app_process()
 
 		throttle_override = apply_throttle(&target_current, throttle_percent);
 
+		uint8_t cur_pas_cadence_rpm_x10 = pas_get_cadence_rpm_x10();
+
 		uint8_t pas_target_speed_pct = compute_PAS_target_speed_pct_V2(); // Always keep PAS target speed updated based on cadence.
+
 		// override target cadence if configured in assist level
 		if (throttle_override &&
 			(assist_level_data.level.flags & ASSIST_FLAG_PAS) &&
@@ -153,9 +156,13 @@ void app_process()
 		{
 			target_cadence = assist_level_data.level.max_cadence_percent;
 		}
-		else // We are only pedalling, so use PAS target speed
+		else if (cur_pas_cadence_rpm_x10 > 10) // We are only pedalling, so use PAS target speed
 		{
 			target_cadence = pas_target_speed_pct;
+		}
+		else // We are coasting the bike, so use maximum assist level speed
+		{
+			target_cadence = assist_level_data.level.max_cadence_percent;
 		}
 	}
 
