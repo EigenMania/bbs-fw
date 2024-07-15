@@ -156,7 +156,7 @@ void app_process()
 		{
 			target_cadence = assist_level_data.level.max_cadence_percent;
 		}
-		else if (cur_pas_cadence_rpm_x10 > 10) // We are only pedalling, so use PAS target speed
+		else if (cur_pas_cadence_rpm_x10 > 0) // We are only pedalling, so use PAS target speed
 		{
 			target_cadence = pas_target_speed_pct;
 		}
