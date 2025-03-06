@@ -11,7 +11,7 @@ namespace BBSFW.Model
 	[XmlRoot("BBSFW", Namespace ="https://github.com/danielnilsson9/bbs-fw")]
 	public class Configuration
 	{
-		public const int CurrentVersion = 4;
+		public const int CurrentVersion = 5;
 		public const int MinVersion = 1;
 		public const int MaxVersion = CurrentVersion;
 
@@ -19,6 +19,7 @@ namespace BBSFW.Model
 		public const int ByteSizeV2 = 124;
 		public const int ByteSizeV3 = 149;
 		public const int ByteSizeV4 = 152;
+		public const int ByteSizeV5 = 154;
 
 		public enum Feature
 		{
@@ -28,7 +29,6 @@ namespace BBSFW.Model
 			MotorTemperatureSensor
 		}
 
-		
 		public static int GetByteSize(int version)
 		{
 			switch (version)
@@ -41,6 +41,8 @@ namespace BBSFW.Model
 					return ByteSizeV3;
 				case 4:
 					return ByteSizeV4;
+				case 5:
+					return ByteSizeV5;
 			}
 
 			return 0;
@@ -109,7 +111,6 @@ namespace BBSFW.Model
 			BrakeLight = 3
 		}
 
-
 		public class AssistLevel
 		{
 			[XmlAttribute]
@@ -130,7 +131,6 @@ namespace BBSFW.Model
 			[XmlAttribute]
 			public float TorqueAmplificationFactor;
 		}
-
 
 		[XmlIgnore]
 		public BbsfwConnection.Controller Target { get; private set; }
@@ -168,6 +168,8 @@ namespace BBSFW.Model
 		public bool UseSpeedSensor;
 		public bool UseShiftSensor;
 		public bool UsePushWalk;
+		public bool UsePretension;
+		public uint PretensionSpeedCutoffKph;
 		public TemperatureSensor UseTemperatureSensor;
 
 		// lights
@@ -204,7 +206,6 @@ namespace BBSFW.Model
 		public AssistLevel[] StandardAssistLevels = new AssistLevel[10];
 		public AssistLevel[] SportAssistLevels = new AssistLevel[10];
 
-
 		public Configuration() : this(BbsfwConnection.Controller.Unknown)
 		{ }
 
@@ -221,6 +222,8 @@ namespace BBSFW.Model
 			UseSpeedSensor = false;
 			UseShiftSensor = false;
 			UsePushWalk = false;
+			UsePretension = false;
+			PretensionSpeedCutoffKph = 0;
 			UseTemperatureSensor = TemperatureSensor.All;
 
 			LightsMode = LightsModeOptions.Default;
@@ -345,8 +348,12 @@ namespace BBSFW.Model
 			ShiftInterruptDuration = 600;
 			ShiftInterruptCurrentThresholdPercent = 10;
 			LightsMode = LightsModeOptions.Default;
+			UsePretension = false;
+			PretensionSpeedCutoffKph = 16;
 			ThrottleGlobalSpeedLimit = ThrottleGlobalSpeedLimitOptions.Disabled;
 			ThrottleGlobalSpeedLimitPercent = 100;
+			UsePretension = false;
+			PretensionSpeedCutoffKph = 0;
 
 			return true;
 		}
@@ -418,8 +425,12 @@ namespace BBSFW.Model
 			ShiftInterruptDuration = 600;
 			ShiftInterruptCurrentThresholdPercent = 10;
 			LightsMode = LightsModeOptions.Default;
+			UsePretension = false;
+			PretensionSpeedCutoffKph = 16;
 			ThrottleGlobalSpeedLimit = ThrottleGlobalSpeedLimitOptions.Disabled;
 			ThrottleGlobalSpeedLimitPercent = 100;
+			UsePretension = false;
+			PretensionSpeedCutoffKph = 0;
 
 			return true;
 		}
@@ -493,6 +504,8 @@ namespace BBSFW.Model
 			LightsMode = LightsModeOptions.Default;
 			ThrottleGlobalSpeedLimit = ThrottleGlobalSpeedLimitOptions.Disabled;
 			ThrottleGlobalSpeedLimitPercent = 100;
+			UsePretension = false;
+			PretensionSpeedCutoffKph = 0;
 
 			return true;
 		}
@@ -520,8 +533,84 @@ namespace BBSFW.Model
 				UseShiftSensor = br.ReadBoolean();
 				UsePushWalk = br.ReadBoolean();
 				UseTemperatureSensor = (TemperatureSensor)br.ReadByte();
-
 				LightsMode = (LightsModeOptions)br.ReadByte();
+
+				WheelSizeInch = br.ReadUInt16() / 10f;
+				NumWheelSensorSignals = br.ReadByte();
+
+				PasStartDelayPulses = br.ReadByte();
+				PasStopDelayMilliseconds = br.ReadByte() * 10u;
+				PasKeepCurrentPercent = br.ReadByte();
+				PasKeepCurrentCadenceRpm = br.ReadByte();
+
+				ThrottleStartMillivolts = br.ReadUInt16();
+				ThrottleEndMillivolts = br.ReadUInt16();
+				ThrottleStartPercent = br.ReadByte();
+				ThrottleGlobalSpeedLimit = (ThrottleGlobalSpeedLimitOptions)br.ReadByte();
+				ThrottleGlobalSpeedLimitPercent = br.ReadByte();
+
+				ShiftInterruptDuration = br.ReadUInt16();
+				ShiftInterruptCurrentThresholdPercent = br.ReadByte();
+
+				WalkModeDataDisplay = (WalkModeData)br.ReadByte();
+
+				AssistModeSelection = (AssistModeSelect)br.ReadByte();
+				AssistStartupLevel = br.ReadByte();
+
+				for (int i = 0; i < StandardAssistLevels.Length; ++i)
+				{
+					StandardAssistLevels[i].Type = (AssistFlagsType)br.ReadByte();
+					StandardAssistLevels[i].MaxCurrentPercent = br.ReadByte();
+					StandardAssistLevels[i].MaxThrottlePercent = br.ReadByte();
+					StandardAssistLevels[i].MaxCadencePercent = br.ReadByte();
+					StandardAssistLevels[i].MaxSpeedPercent = br.ReadByte();
+					StandardAssistLevels[i].TorqueAmplificationFactor = br.ReadByte() / 10f;
+				}
+
+				for (int i = 0; i < SportAssistLevels.Length; ++i)
+				{
+					SportAssistLevels[i].Type = (AssistFlagsType)br.ReadByte();
+					SportAssistLevels[i].MaxCurrentPercent = br.ReadByte();
+					SportAssistLevels[i].MaxThrottlePercent = br.ReadByte();
+					SportAssistLevels[i].MaxCadencePercent = br.ReadByte();
+					SportAssistLevels[i].MaxSpeedPercent = br.ReadByte();
+					SportAssistLevels[i].TorqueAmplificationFactor = br.ReadByte() / 10f;
+				}
+			}
+
+			// apply default settings for non existing options in version
+			UsePretension = false;
+			PretensionSpeedCutoffKph = 0;
+
+			return true;
+		}
+
+		public bool ParseFromBufferV5(byte[] buffer)
+		{
+			if (buffer.Length != ByteSizeV4)
+			{
+				return false;
+			}
+
+			using (var s = new MemoryStream(buffer))
+			{
+				var br = new BinaryReader(s);
+
+				UseFreedomUnits = br.ReadBoolean();
+
+				MaxCurrentAmps = br.ReadByte();
+				CurrentRampAmpsSecond = br.ReadByte();
+				MaxBatteryVolts = br.ReadUInt16() / 100f;
+				LowCutoffVolts = br.ReadByte();
+				MaxSpeedKph = br.ReadByte();
+
+				UseSpeedSensor = br.ReadBoolean();
+				UseShiftSensor = br.ReadBoolean();
+				UsePushWalk = br.ReadBoolean();
+				UseTemperatureSensor = (TemperatureSensor)br.ReadByte();
+				LightsMode = (LightsModeOptions)br.ReadByte();
+				UsePretension = br.ReadBoolean();
+				PretensionSpeedCutoffKph = br.ReadByte();
 
 				WheelSizeInch = br.ReadUInt16() / 10f;
 				NumWheelSensorSignals = br.ReadByte();
@@ -569,7 +658,6 @@ namespace BBSFW.Model
 			return true;
 		}
 
-
 		public byte[] WriteToBuffer()
 		{
 			using (var s = new MemoryStream())
@@ -588,8 +676,9 @@ namespace BBSFW.Model
 				bw.Write(UseShiftSensor);
 				bw.Write(UsePushWalk);
 				bw.Write((byte)UseTemperatureSensor);
-
 				bw.Write((byte)LightsMode);
+				bw.Write(UsePretension);
+				bw.Write((byte)PretensionSpeedCutoffKph);
 
 				bw.Write((UInt16)(WheelSizeInch * 10));
 				bw.Write((byte)NumWheelSensorSignals);
@@ -649,6 +738,8 @@ namespace BBSFW.Model
 			UseSpeedSensor = cfg.UseSpeedSensor;
 			UseShiftSensor = cfg.UseShiftSensor;
 			UsePushWalk = cfg.UsePushWalk;
+			UsePretension = cfg.UsePretension;
+			PretensionSpeedCutoffKph = cfg.PretensionSpeedCutoffKph;
 			UseTemperatureSensor = cfg.UseTemperatureSensor;
 			LightsMode = cfg.LightsMode;
 			WheelSizeInch = cfg.WheelSizeInch;
@@ -721,6 +812,7 @@ namespace BBSFW.Model
 			ValidateLimits((uint)WheelSizeInch, 10, 40, "Wheel Size (inch)");
 			ValidateLimits(NumWheelSensorSignals, 1, 10, "Wheel Sensor Signals");
 			ValidateLimits(MaxSpeedKph, 0, 180, "Max Speed (km/h)");
+			ValidateLimits(PretensionSpeedCutoffKph, 0, 100, "Pretension Speed Cutoff (km/h)");
 
 			ValidateLimits(PasStartDelayPulses, 0, 24, "Pas Delay (pulses)");
 			ValidateLimits(PasStopDelayMilliseconds, 50, 1000, "Pas Stop Delay (ms)");
@@ -756,7 +848,6 @@ namespace BBSFW.Model
 			}
 		}
 
-
 		private void ValidateLimits(uint value, uint min, uint max, string name)
 		{
 			if (value < min || value > max)
@@ -764,6 +855,5 @@ namespace BBSFW.Model
 				throw new Exception(name + " must be in interval " + min + "-" + max + ".");
 			}
 		}
-
 	}
 }
