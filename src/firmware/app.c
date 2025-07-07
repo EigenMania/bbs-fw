@@ -157,7 +157,11 @@ void app_process()
 
 		apply_cruise(&target_current, throttle_percent);
 
+		// NB: Only updates target current to throttle current request if greater than PAS current request!
 		throttle_override = apply_throttle(&target_current, throttle_percent);
+
+		// Compute and save throttle current request (taken from apply_throttle since it returns a boolean)
+		uint8_t throttle_current = (uint8_t)MAP16(throttle_percent, 0, 100, g_config.throttle_start_percent, assist_level_data.level.max_throttle_current_percent);
 
 		uint8_t cur_pas_cadence_rpm_x10 = pas_get_cadence_rpm_x10();
 
@@ -169,18 +173,28 @@ void app_process()
 			(assist_level_data.level.flags & ASSIST_FLAG_OVERRIDE_CADENCE))
 		{
 			target_cadence = THROTTLE_CADENCE_OVERRIDE_PERCENT;
+			target_current = throttle_current;
 		}
-		else if (throttle_percent > 0) // Throttle is active, use configured max cadence
+		// Throttle is active, use configured max cadence and throttle current (regardless of pedalling or not)
+		else if (throttle_percent > 0)
 		{
 			target_cadence = assist_level_data.level.max_cadence_percent;
+			target_current = throttle_current;
 		}
-		else if (cur_pas_cadence_rpm_x10 > 0) // We are only pedalling, so use PAS target speed
+		// Pedalling forwards with no throttle, use PAS current and cadence / speed
+		else if (pas_is_pedaling_forwards()) 
 		{
 			target_cadence = pas_target_speed_pct;
 		}
-		else // We are coasting the bike, so use maximum assist level speed
+		// Coasting the bike, so use maximum assist level speed but 1% current
+		else
 		{
 			target_cadence = assist_level_data.level.max_cadence_percent;
+			// This is just a safety precaution to make sure it never applies more than 1% in this block.
+			if (target_current > 1)
+			{
+				target_current = 1;
+			}
 		}
 	}
 
