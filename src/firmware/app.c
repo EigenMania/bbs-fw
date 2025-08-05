@@ -153,7 +153,8 @@ void app_process()
 		apply_pas_torque(&target_current);
 #endif // HAS_TORQUE_SENSOR
 
-		pas_engaged = target_current > 0;
+		// Register pas_engaged when pedalling forwards so that global throttle speed limit works.
+		pas_engaged = pas_is_pedaling_forwards();
 
 		apply_cruise(&target_current, throttle_percent);
 
